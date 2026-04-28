@@ -1,0 +1,108 @@
+name: 'Vigil License Compliance'
+description: '🛡️ Scan your Python dependencies for license conflicts, policy violations, and compliance issues.'
+author: 'Schmidt Peter Daniel'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  policy-file:
+    description: 'Path to your vigil.yaml policy file.'
+    required: false
+    default: 'vigil.yaml'
+
+  requirements-file:
+    description: 'Path to requirements.txt. If omitted, scans the full installed environment.'
+    required: false
+    default: ''
+
+  format:
+    description: 'Report output format: terminal, json, or html.'
+    required: false
+    default: 'terminal'
+
+  output-file:
+    description: 'Path to write the report file (used with format: html or json).'
+    required: false
+    default: 'vigil-report.html'
+
+  fail-on-warning:
+    description: 'Fail the workflow on warnings as well as errors.'
+    required: false
+    default: 'false'
+
+  python-version:
+    description: 'Python version to use for running Vigil.'
+    required: false
+    default: '3.11'
+
+  vigil-version:
+    description: 'Version of vigil-cli to install. Defaults to latest.'
+    required: false
+    default: 'latest'
+
+  upload-report:
+    description: 'Upload the HTML report as a workflow artifact.'
+    required: false
+    default: 'true'
+
+outputs:
+  has-errors:
+    description: 'Whether the scan found license errors (true/false).'
+    value: ${{ steps.scan.outputs.has_errors }}
+
+  has-warnings:
+    description: 'Whether the scan found license warnings (true/false).'
+    value: ${{ steps.scan.outputs.has_warnings }}
+
+  report-path:
+    description: 'Path to the generated report file.'
+    value: ${{ steps.scan.outputs.report_path }}
+
+  total-dependencies:
+    description: 'Total number of dependencies scanned.'
+    value: ${{ steps.scan.outputs.total_dependencies }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Vigil
+      shell: bash
+      run: |
+        if [ "${{ inputs.vigil-version }}" = "latest" ]; then
+          pip install vigil-cli --quiet
+        else
+          pip install "vigil-cli==${{ inputs.vigil-version }}" --quiet
+        fi
+
+    - name: Install project dependencies (if requirements file given)
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.requirements-file }}" ] && [ -f "${{ inputs.requirements-file }}" ]; then
+          pip install -r "${{ inputs.requirements-file }}" --quiet
+        fi
+
+    - name: Run Vigil scan
+      id: scan
+      shell: bash
+      run: |
+        python "${{ github.action_path }}/scripts/run_scan.py" \
+          --policy "${{ inputs.policy-file }}" \
+          --requirements "${{ inputs.requirements-file }}" \
+          --format "${{ inputs.format }}" \
+          --output "${{ inputs.output-file }}" \
+          --fail-on-warning "${{ inputs.fail-on-warning }}"
+
+    - name: Upload compliance report
+      if: inputs.upload-report == 'true' && inputs.format == 'html'
+      uses: actions/upload-artifact@v4
+      with:
+        name: vigil-compliance-report
+        path: ${{ inputs.output-file }}
+        if-no-files-found: ignore

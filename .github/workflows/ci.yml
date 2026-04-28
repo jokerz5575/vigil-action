@@ -1,0 +1,61 @@
+name: CI — Test the Action
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Test 1: Basic scan with no policy
+  test-basic:
+    name: Test basic scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Vigil (no policy)
+        uses: ./   # Use the local action
+        with:
+          format: terminal
+
+  # Test 2: Scan with permissive policy (should pass)
+  test-with-policy:
+    name: Test with policy file
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Vigil with policy
+        uses: ./
+        with:
+          policy-file: tests/fixtures/permissive-policy.yaml
+          format: html
+          output-file: test-report.html
+          upload-report: true
+
+  # Test 3: Confirm outputs work
+  test-outputs:
+    name: Test action outputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Vigil
+        id: vigil
+        uses: ./
+        continue-on-error: true
+      - name: Print outputs
+        run: |
+          echo "has-errors: ${{ steps.vigil.outputs.has-errors }}"
+          echo "has-warnings: ${{ steps.vigil.outputs.has-warnings }}"
+          echo "total-dependencies: ${{ steps.vigil.outputs.total-dependencies }}"
+
+  # Publish to GitHub Marketplace on version tags
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test-basic, test-with-policy, test-outputs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

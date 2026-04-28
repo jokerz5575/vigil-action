@@ -1,0 +1,19 @@
+# tests/fixtures/permissive-policy.yaml
+# Used in CI to test the action with a very permissive policy.
+policy:
+  allow:
+    - MIT
+    - Apache-2.0
+    - BSD-2-Clause
+    - BSD-3-Clause
+    - ISC
+    - Python-2.0
+    - PSF-2.0
+    - Unlicense
+    - CC0-1.0
+    - LGPL-2.1
+    - LGPL-3.0
+    - MPL-2.0
+  block:
+    - SSPL-1.0
+  fail_on_unknown: false
