@@ -1,4 +1,4 @@
-name: CI — Test the Action
+name: CI — Test the OSSentinel Action
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Vigil (no policy)
+      - name: Run OSSentinel (no policy)
         uses: ./ # Use the local action
         with:
           format: terminal
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Vigil with policy
+      - name: Run OSSentinel with policy
         uses: ./
         with:
           policy-file: tests/fixtures/permissive-policy.yaml
@@ -38,15 +38,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run Vigil
-        id: vigil
+      - name: Run OSSentinel
+        id: ossentinel
         uses: ./
         continue-on-error: true
       - name: Print outputs
         run: |
-          echo "has-errors: ${{ steps.vigil.outputs.has-errors }}"
-          echo "has-warnings: ${{ steps.vigil.outputs.has-warnings }}"
-          echo "total-dependencies: ${{ steps.vigil.outputs.total-dependencies }}"
+          echo "has-errors: ${{ steps.ossentinel.outputs.has-errors }}"
+          echo "has-warnings: ${{ steps.ossentinel.outputs.has-warnings }}"
+          echo "total-dependencies: ${{ steps.ossentinel.outputs.total-dependencies }}"
 
   # Test 4: Scan with GitHub token (secret-based, only runs on non-fork pushes)
   test-with-github-token:
@@ -55,13 +55,13 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      - name: Run Vigil with GitHub token
+      - name: Run OSSentinel with GitHub token
         uses: ./
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           format: terminal
 
-  # Publish to GitHub Marketplace on version tags
+  # Create GitHub Release on version tags
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [test-basic, test-with-policy, test-outputs, test-with-github-token]
