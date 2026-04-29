@@ -3,12 +3,13 @@
 Vigil GitHub Action runner.
 Executes the license scan and writes outputs to the GitHub Actions environment.
 """
+
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
-import json
 from pathlib import Path
 
 
@@ -54,16 +55,25 @@ def main() -> int:
     parser.add_argument("--format", default="terminal")
     parser.add_argument("--output", default="vigil-report.html")
     parser.add_argument("--fail-on-warning", default="false")
+    parser.add_argument("--github-token", default="")
     args = parser.parse_args()
 
     fail_on_warning = args.fail_on_warning.lower() == "true"
+    github_token = (
+        args.github_token
+        or os.environ.get("VIGIL_GITHUB_TOKEN")
+        or os.environ.get("GITHUB_TOKEN")
+        or None
+    )
 
     # Import vigil
     try:
-        from vigil_licenses.scanner import LicenseScanner, LicensePolicy
-        from vigil_licenses.reporter import generate_report, ReportFormat
+        from vigil_licenses.reporter import ReportFormat, generate_report
+        from vigil_licenses.scanner import LicensePolicy, LicenseScanner
     except ImportError:
-        print("::error::vigil-cli is not installed. Please check your workflow configuration.")
+        print(
+            "::error::vigil-cli is not installed. Please check your workflow configuration."
+        )
         return 1
 
     # Load policy if file exists
@@ -73,16 +83,26 @@ def main() -> int:
         policy = LicensePolicy.from_yaml(args.policy)
     else:
         if args.policy and args.policy != "vigil.yaml":
-            print(f"::warning::Policy file '{args.policy}' not found. Running without policy.")
+            print(
+                f"::warning::Policy file '{args.policy}' not found. Running without policy."
+            )
         print("ℹ️  No policy file found — running with default settings.")
 
-    scanner = LicenseScanner(policy=policy)
+    scanner = LicenseScanner(policy=policy, github_token=github_token)
 
     # Resolve requirements path
-    req_file = args.requirements if args.requirements and Path(args.requirements).exists() else None
+    req_file = (
+        args.requirements
+        if args.requirements and Path(args.requirements).exists()
+        else None
+    )
 
     print_group("🛡️ Vigil License Compliance Scan")
-    print(f"Scanning {'requirements file: ' + req_file if req_file else 'installed environment'}...")
+    print(
+        f"Scanning {'requirements file: ' + req_file if req_file else 'installed environment'}..."
+    )
+    if github_token:
+        print("🔍 GitHub license resolution enabled.")
 
     report = scanner.scan(
         requirements_file=req_file,
@@ -106,6 +126,7 @@ def main() -> int:
             msg += f" → {conflict.recommendation}"
 
         from vigil_core.models import ConflictSeverity
+
         if conflict.severity == ConflictSeverity.ERROR:
             annotate_error(msg)
         else:
@@ -126,7 +147,9 @@ def main() -> int:
         return 1
 
     if fail_on_warning and report.has_warnings:
-        print("\n⚠️  Compliance check FAILED — warnings found and --fail-on-warning is set.")
+        print(
+            "\n⚠️  Compliance check FAILED — warnings found and --fail-on-warning is set."
+        )
         return 1
 
     print("\n✅ Compliance check passed.")
@@ -140,8 +163,12 @@ def _write_job_summary(report) -> None:
     lines = ["## 🛡️ Vigil Compliance Report\n"]
 
     # Stats row
-    error_count = sum(1 for c in report.conflicts if c.severity == ConflictSeverity.ERROR)
-    warn_count  = sum(1 for c in report.conflicts if c.severity == ConflictSeverity.WARNING)
+    error_count = sum(
+        1 for c in report.conflicts if c.severity == ConflictSeverity.ERROR
+    )
+    warn_count = sum(
+        1 for c in report.conflicts if c.severity == ConflictSeverity.WARNING
+    )
 
     lines.append("| Metric | Value |")
     lines.append("|---|---|")
@@ -158,7 +185,9 @@ def _write_job_summary(report) -> None:
         lines.append("|---|---|---|---|")
         for c in report.conflicts:
             icon = "🔴" if c.severity == ConflictSeverity.ERROR else "🟡"
-            lines.append(f"| {icon} {c.severity.value.upper()} | `{c.package}` | `{c.license_spdx}` | {c.reason} |")
+            lines.append(
+                f"| {icon} {c.severity.value.upper()} | `{c.package}` | `{c.license_spdx}` | {c.reason} |"
+            )
         lines.append("")
     else:
         lines.append("### ✅ No license issues detected.\n")
@@ -172,8 +201,32 @@ def _write_job_summary(report) -> None:
             lines.append(f"| `{spdx}` | {count} |")
         lines.append("\n</details>")
 
+    # GitHub-resolved licenses section
+    github_deps = [
+        d
+        for d in report.dependencies
+        if getattr(d, "license_resolved_by", None) == "github"
+    ]
+    if github_deps:
+        lines.append(
+            "\n<details><summary>🔍 GitHub-Resolved Licenses ("
+            + str(len(github_deps))
+            + ")</summary>\n"
+        )
+        lines.append("| Package | Version | License | Source |")
+        lines.append("|---|---|---|---|")
+        for d in github_deps:
+            src = d.license_source_url or ""
+            src_link = f"[view]({src})" if src else "—"
+            lines.append(
+                f"| `{d.name}` | {d.version} | `{d.license_spdx or 'UNKNOWN'}` | {src_link} |"
+            )
+        lines.append("\n</details>")
+
     lines.append("\n---")
-    lines.append("*Generated by [Vigil](https://github.com/schmidtpeterdaniel/vigil) — Open source compliance, automated.*")
+    lines.append(
+        "*Generated by [Vigil](https://github.com/schmidtpeterdaniel/vigil) — Open source compliance, automated.*"
+    )
 
     set_summary("\n".join(lines))
 

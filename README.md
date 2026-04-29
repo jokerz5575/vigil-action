@@ -1,6 +1,6 @@
 # 🛡️ vigil-action
 
-> GitHub Action for [Vigil](https://github.com/schmidtpeterdaniel/vigil) — Open source license compliance, automated.
+> GitHub Action for [Vigil](https://github.com/jokerz5575/vigil) — Open source license compliance, automated.
 
 Scan your Python dependencies for license conflicts, policy violations, and compliance issues — directly in your CI pipeline.
 
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Vigil license scan
-        uses: schmidtpeterdaniel/vigil-action@v1
+        uses: jokerz5575/vigil-action@v1
 ```
 
 That's it. Vigil will scan your environment and fail the job if any license violations are found.
@@ -58,7 +58,7 @@ Then reference it in your workflow:
 
 ```yaml
       - name: Run Vigil license scan
-        uses: schmidtpeterdaniel/vigil-action@v1
+        uses: jokerz5575/vigil-action@v1
         with:
           policy-file: vigil.yaml
 ```
@@ -69,7 +69,7 @@ Then reference it in your workflow:
 
 ```yaml
       - name: Run Vigil license scan
-        uses: schmidtpeterdaniel/vigil-action@v1
+        uses: jokerz5575/vigil-action@v1
         with:
           policy-file: vigil.yaml
           format: html
@@ -104,7 +104,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Vigil
-        uses: schmidtpeterdaniel/vigil-action@v1
+        uses: jokerz5575/vigil-action@v1
         with:
           policy-file: vigil.yaml
           requirements-file: requirements.txt
@@ -112,6 +112,7 @@ jobs:
           output-file: vigil-report.html
           upload-report: true
           fail-on-warning: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ---
@@ -125,6 +126,7 @@ jobs:
 | `format` | Output format: `terminal`, `json`, `html` | `terminal` |
 | `output-file` | Path for report file (used with `html` or `json`) | `vigil-report.html` |
 | `fail-on-warning` | Fail the job on warnings too | `false` |
+| `github-token` | GitHub token for resolving unknown licenses via the GitHub API | `` |
 | `upload-report` | Upload HTML report as workflow artifact | `true` |
 | `python-version` | Python version to use | `3.11` |
 | `vigil-version` | Version of `vigil-cli` to install | `latest` |
@@ -145,7 +147,7 @@ Use outputs in subsequent steps:
 ```yaml
       - name: Run Vigil
         id: vigil
-        uses: schmidtpeterdaniel/vigil-action@v1
+        uses: jokerz5575/vigil-action@v1
 
       - name: Comment on PR
         if: steps.vigil.outputs.has-warnings == 'true'
@@ -154,9 +156,31 @@ Use outputs in subsequent steps:
 
 ---
 
+## GitHub License Resolution (New in 1.0)
+
+Vigil 1.0 introduces a GitHub-based license resolver. When PyPI metadata cannot identify a package's license, Vigil automatically searches GitHub for the best matching repository, finds the version-aligned tag, and returns a version-specific permalink to the LICENSE file.
+
+To enable it, pass a GitHub token:
+
+```yaml
+      - name: Run Vigil
+        uses: jokerz5575/vigil-action@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Without a token, requests are rate-limited to 60/hour. With a token (even the built-in `GITHUB_TOKEN`), limits rise to 5,000/hour.
+
+GitHub-resolved licenses appear in a dedicated section in the HTML report and in the job summary, with a direct link to the license file at the exact release tag.
+
+---
+
 ## Job Summary
 
-Vigil automatically writes a rich Markdown summary to the GitHub Actions job summary page, including a table of all conflicts and a full license breakdown.
+Vigil automatically writes a rich Markdown summary to the GitHub Actions job summary page, including:
+- A table of all license conflicts
+- A full license breakdown
+- A collapsible **GitHub-Resolved Licenses** section (when `github-token` is used), showing each package resolved via GitHub with a direct link to the license file at the release tag
 
 ---
 

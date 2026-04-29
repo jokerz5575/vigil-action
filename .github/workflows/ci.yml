@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Vigil (no policy)
-        uses: ./   # Use the local action
+        uses: ./ # Use the local action
         with:
           format: terminal
 
@@ -48,10 +48,23 @@ jobs:
           echo "has-warnings: ${{ steps.vigil.outputs.has-warnings }}"
           echo "total-dependencies: ${{ steps.vigil.outputs.total-dependencies }}"
 
+  # Test 4: Scan with GitHub token (secret-based, only runs on non-fork pushes)
+  test-with-github-token:
+    name: Test with GitHub token
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Vigil with GitHub token
+        uses: ./
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          format: terminal
+
   # Publish to GitHub Marketplace on version tags
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test-basic, test-with-policy, test-outputs]
+    needs: [test-basic, test-with-policy, test-outputs, test-with-github-token]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
