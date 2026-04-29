@@ -1,5 +1,5 @@
-name: "Vigil License Compliance"
-description: "🛡️ Scan your Python dependencies for license conflicts, policy violations, and compliance issues."
+name: "OSSentinel License Compliance"
+description: "🛡️ Scan your Python dependencies for license conflicts, policy violations, and compliance issues — powered by OSSentinel."
 author: "Schmidt Peter Daniel"
 
 branding:
@@ -37,8 +37,8 @@ inputs:
     required: false
     default: "3.11"
 
-  vigil-version:
-    description: "Version of vigil-cli to install. Defaults to latest."
+  ossentinel-version:
+    description: "Version of ossentinel-cli to install. Defaults to latest."
     required: false
     default: "latest"
 
@@ -77,13 +77,13 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install Vigil
+    - name: Install OSSentinel
       shell: bash
       run: |
-        if [ "${{ inputs.vigil-version }}" = "latest" ]; then
-          pip install vigil-cli --quiet
+        if [ "${{ inputs.ossentinel-version }}" = "latest" ]; then
+          pip install ossentinel-cli --quiet
         else
-          pip install "vigil-cli==${{ inputs.vigil-version }}" --quiet
+          pip install "ossentinel-cli==${{ inputs.ossentinel-version }}" --quiet
         fi
 
     - name: Install project dependencies (if requirements file given)

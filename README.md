@@ -1,6 +1,8 @@
 # 🛡️ vigil-action
 
-> GitHub Action for [Vigil](https://github.com/jokerz5575/vigil) — Open source license compliance, automated.
+> GitHub Action for [OSSentinel](https://github.com/jokerz5575/vigil) — Open source license compliance, automated.
+
+Powered by the `ossentinel-cli` package (formerly `vigil-cli`).
 
 Scan your Python dependencies for license conflicts, policy violations, and compliance issues — directly in your CI pipeline.
 
@@ -21,11 +23,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run Vigil license scan
-        uses: jokerz5575/vigil-action@v1
+      - name: Run OSSentinel license scan
+        uses: jokerz5575/vigil-action@v1.0-beta
 ```
 
-That's it. Vigil will scan your environment and fail the job if any license violations are found.
+That's it. OSSentinel will scan your environment and fail the job if any license violations are found.
 
 ---
 
@@ -57,8 +59,8 @@ policy:
 Then reference it in your workflow:
 
 ```yaml
-      - name: Run Vigil license scan
-        uses: jokerz5575/vigil-action@v1
+      - name: Run OSSentinel license scan
+        uses: jokerz5575/vigil-action@v1.0-beta
         with:
           policy-file: vigil.yaml
 ```
@@ -68,8 +70,8 @@ Then reference it in your workflow:
 ## Generate an HTML Report
 
 ```yaml
-      - name: Run Vigil license scan
-        uses: jokerz5575/vigil-action@v1
+      - name: Run OSSentinel license scan
+        uses: jokerz5575/vigil-action@v1.0-beta
         with:
           policy-file: vigil.yaml
           format: html
@@ -103,8 +105,8 @@ jobs:
       - name: Install project dependencies
         run: pip install -r requirements.txt
 
-      - name: Run Vigil
-        uses: jokerz5575/vigil-action@v1
+      - name: Run OSSentinel
+        uses: jokerz5575/vigil-action@v1.0-beta
         with:
           policy-file: vigil.yaml
           requirements-file: requirements.txt
@@ -129,7 +131,7 @@ jobs:
 | `github-token` | GitHub token for resolving unknown licenses via the GitHub API | `` |
 | `upload-report` | Upload HTML report as workflow artifact | `true` |
 | `python-version` | Python version to use | `3.11` |
-| `vigil-version` | Version of `vigil-cli` to install | `latest` |
+| `ossentinel-version` | Version of `ossentinel-cli` to install | `latest` |
 
 ---
 
@@ -145,33 +147,46 @@ jobs:
 Use outputs in subsequent steps:
 
 ```yaml
-      - name: Run Vigil
-        id: vigil
-        uses: jokerz5575/vigil-action@v1
+      - name: Run OSSentinel
+        id: ossentinel
+        uses: jokerz5575/vigil-action@v1.0-beta
 
       - name: Comment on PR
-        if: steps.vigil.outputs.has-warnings == 'true'
+        if: steps.ossentinel.outputs.has-warnings == 'true'
         run: echo "License warnings found — please review the compliance report."
+```
+
+---
+
+## Pinning a Specific Version
+
+By default the action always installs the latest `ossentinel-cli`. To pin to a specific release:
+
+```yaml
+      - name: Run OSSentinel
+        uses: jokerz5575/vigil-action@v1.0-beta
+        with:
+          ossentinel-version: "1.0.0"
 ```
 
 ---
 
 ## GitHub License Resolution (New in 1.0)
 
-Vigil 1.0 introduces a GitHub-based license resolver. When PyPI metadata cannot identify a package's license, Vigil automatically searches GitHub for the best matching repository, finds the version-aligned tag, and returns a version-specific permalink to the LICENSE file.
+OSSentinel 1.0 introduces a GitHub-based license resolver. When PyPI metadata cannot identify a package's license, OSSentinel automatically searches GitHub for the best matching repository, finds the version-aligned tag, and returns a version-specific permalink to the LICENSE file.
 
 To enable it, pass a GitHub token:
 
 ```yaml
-      - name: Run Vigil
-        uses: jokerz5575/vigil-action@v1
+      - name: Run OSSentinel
+        uses: jokerz5575/vigil-action@v1.0-beta
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 Without a token, requests are rate-limited to 60/hour. With a token (even the built-in `GITHUB_TOKEN`), limits rise to 5,000/hour.
 
-GitHub-resolved licenses appear in a dedicated section in the HTML report and in the job summary, with a direct link to the license file at the exact release tag.
+GitHub-resolved licenses appear in a dedicated collapsible section in the HTML report and in the Actions job summary, with a direct link to the license file at the exact release tag.
 
 ---
 
@@ -187,3 +202,7 @@ Vigil automatically writes a rich Markdown summary to the GitHub Actions job sum
 ## License
 
 Apache-2.0 © Schmidt Peter Daniel
+
+---
+
+> **Note:** The underlying packages were previously published as `vigil-core`, `vigil-licenses`, and `vigil-cli`. They are now published on PyPI under `ossentinel-core`, `ossentinel-licenses`, and `ossentinel-cli`. The Python import names (`vigil_core`, `vigil_licenses`) and the CLI command (`vigil`) remain unchanged.
